@@ -2,7 +2,6 @@ import numpy as np
 import random
 import pygame
 
-# Constantes de Cores para o Pygame
 BRANCO = (255, 255, 255)
 AZUL = (0, 0, 255)      # Região retangular
 AMARELO = (255, 255, 0) # Região circular
@@ -11,10 +10,9 @@ CINZA = (200, 200, 200) # Linhas de grade do grid
 
 class FazendaGrid:
     def __init__(self, linhas_grid, colunas_grid, tamanho_celula=20):
-        # Configurações do Grid Lógico
         self.linhas = linhas_grid
         self.colunas = colunas_grid
-        self.tamanho_celula = tamanho_celula # Tamanho de cada 'pixel' quadrado na tela
+        self.tamanho_celula = tamanho_celula 
         
         # 0 = Terreno vazio | 1 = Azul | 2 = Amarelo | -1 = Obstáculo
         self.grid = np.zeros((linhas_grid, colunas_grid), dtype=int)
@@ -34,7 +32,6 @@ class FazendaGrid:
         for x in range(self.linhas):
             for y in range(self.colunas):
                 if (x - cx)**2 + (y - cy)**2 <= r**2:
-                    # Só sobrescreve se não for retângulo (opcional, dependendo de como você quer a sobreposição)
                     self.grid[x, y] = 2
                     self.mascara_circulo[x, y] = True
 
@@ -53,7 +50,6 @@ class FazendaGrid:
         """Renderiza a matriz lógica na tela do Pygame."""
         for x in range(self.linhas):
             for y in range(self.colunas):
-                # Define a cor baseada no valor da matriz lógica
                 cor = BRANCO
                 if self.grid[x, y] == -1:
                     cor = PRETO
@@ -62,9 +58,8 @@ class FazendaGrid:
                 elif self.grid[x, y] == 2:
                     cor = AMARELO
                     
-                # No Pygame, o eixo X é horizontal (colunas) e Y é vertical (linhas)
                 rect = pygame.Rect(y * self.tamanho_celula, x * self.tamanho_celula, 
                                 self.tamanho_celula, self.tamanho_celula)
                 
                 pygame.draw.rect(tela, cor, rect)
-                pygame.draw.rect(tela, CINZA, rect, 1) # Desenha a bordinha da célula
+                pygame.draw.rect(tela, CINZA, rect, 1)
