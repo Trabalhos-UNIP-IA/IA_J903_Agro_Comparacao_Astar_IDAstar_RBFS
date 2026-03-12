@@ -1,6 +1,5 @@
 import pygame
 import heapq
-import random
 import time
 import tracemalloc
 import matplotlib.pyplot as plt
@@ -24,7 +23,7 @@ pygame.display.set_caption("Planejamento de Rotas - Drone Agrícola")
 clock = pygame.time.Clock()
 fonte = pygame.font.SysFont("Arial", 16)
 
-E_MAX = 100  # energia máxima do drone
+E_MAX = 400  # energia máxima do drone
 CUSTO_MOVIMENTO = 1  # custo de energia para cada movimento
 bateria = E_MAX
 largura_barra = 120
@@ -43,6 +42,7 @@ AMARELO = (255, 220, 0)
 VERDE = (0, 200, 100)
 VERMELHO = (255, 50, 50)
 CINZA = (200, 200, 200)
+VERDE_GRAMA = (120, 200, 120)
 
 # =============================
 # POSIÇÕES
@@ -73,13 +73,6 @@ def gerar_mapa():
         for j in range(COLUNAS):
             if (i - cx) ** 2 + (j - cy) ** 2 <= r**2:
                 grid[i][j] = 3
-
-    # obstáculos
-    # for i in range(LINHAS):
-    #     for j in range(COLUNAS):
-
-    #         if grid[i][j] == 0 and random.random() < 0.18:
-    #             grid[i][j] = 1
 
     # garantir start e goal livres
     grid[start[0]][start[1]] = 0
@@ -305,7 +298,44 @@ def run_rbfs(start, goal):
 
 
 # =============================
-# PERFORMANCE oo
+# VARREDURA DE REGIÕES
+# =============================
+
+
+def pegar_regiao(grid, valor):
+    celulas = []
+
+    for i in range(len(grid)):
+        for j in range(len(grid[0])):
+            if grid[i][j] == valor:
+                celulas.append((i, j))
+
+    return celulas
+
+
+def varrer_area(celulas):
+    path = []
+
+    linhas = {}
+
+    for x, y in celulas:
+        if x not in linhas:
+            linhas[x] = []
+        linhas[x].append((x, y))
+
+    for i, linha in enumerate(sorted(linhas.keys())):
+        pontos = sorted(linhas[linha], key=lambda p: p[1])
+
+        if i % 2 == 0:
+            path.extend(pontos)
+        else:
+            path.extend(pontos[::-1])
+
+    return path
+
+
+# =============================
+# PERFORMANCE
 # =============================
 
 performance = []
@@ -317,7 +347,31 @@ def executar_algoritmo(nome, func):
 
     t0 = time.perf_counter()
 
-    path = func(start, goal)
+    # pegar regiões
+    area_azul = pegar_regiao(grid, 2)
+    area_amarela = pegar_regiao(grid, 3)
+
+    # gerar varredura
+    varredura_azul = varrer_area(area_azul)
+    varredura_amarela = varrer_area(area_amarela)
+
+    # caminho até área azul
+    path1 = func(start, varredura_azul[0])
+
+    # varrer área azul
+    path2 = varredura_azul
+
+    # caminho até área amarela
+    path3 = func(varredura_azul[-1], varredura_amarela[0])
+
+    # varrer área amarela
+    path4 = varredura_amarela
+
+    # caminho total
+    path = path1 + path2 + path3 + path4
+    # verificar se as áreas existem
+    if not varredura_azul or not varredura_amarela:
+        return None, 0, 0
 
     t1 = time.perf_counter()
 
@@ -423,7 +477,7 @@ def desenhar(path=None, drone=None):
             rect = pygame.Rect(j * TAMANHO, i * TAMANHO, TAMANHO, TAMANHO)
 
             if grid[i][j] == 1:
-                pygame.draw.rect(tela, [0,100,0], rect)
+                pygame.draw.rect(tela, PRETO, rect)
 
             elif grid[i][j] == 2:
                 pygame.draw.rect(tela, AZUL, rect)
@@ -432,13 +486,6 @@ def desenhar(path=None, drone=None):
                 pygame.draw.rect(tela, AMARELO, rect)
 
             pygame.draw.rect(tela, CINZA, rect, 1)
-
-    if path:
-
-        for x, y in path:
-
-            rect = pygame.Rect(y * TAMANHO, x * TAMANHO, TAMANHO, TAMANHO)
-            pygame.draw.rect(tela, VERDE, rect)
 
     # start
     pygame.draw.circle(
