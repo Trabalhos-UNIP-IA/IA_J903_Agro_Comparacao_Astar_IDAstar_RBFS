@@ -2,6 +2,7 @@ import pygame
 import heapq
 import time
 import tracemalloc
+import random
 import matplotlib.pyplot as plt
 
 # =============================
@@ -14,20 +15,20 @@ TAMANHO = 24
 LINHAS = 30
 COLUNAS = 30
 
-LARGURA = COLUNAS * TAMANHO + 300
+LARGURA = COLUNAS * TAMANHO + 250
 ALTURA = LINHAS * TAMANHO
 
 tela = pygame.display.set_mode((LARGURA, ALTURA))
-pygame.display.set_caption("Planejamento de Rotas - Drone Agrícola")
+pygame.display.set_caption("Drone Agrícola - Comparação de Algoritmos")
 
 clock = pygame.time.Clock()
 fonte = pygame.font.SysFont("Arial", 16)
 
-E_MAX = 400  # energia máxima do drone
-CUSTO_MOVIMENTO = 1  # custo de energia para cada movimento
+E_MAX = 250
+CUSTO_MOVIMENTO = 1
 bateria = E_MAX
-largura_barra = 120
-
+energia_consumida = 0
+status_mensagem = ""
 
 DIRECOES = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
@@ -39,18 +40,15 @@ BRANCO = (255, 255, 255)
 PRETO = (30, 30, 30)
 AZUL = (80, 140, 255)
 AMARELO = (255, 220, 0)
-VERDE = (0, 200, 100)
 VERMELHO = (255, 50, 50)
 CINZA = (200, 200, 200)
-VERDE_GRAMA = (120, 200, 120)
 
 # =============================
 # POSIÇÕES
 # =============================
 
-start = (1, 1)
-goal = (26, 26)
-
+start = (1, 1)  # canto da área azul
+goal = (10, 18)  # último bloco inferior da área amarela
 # =============================
 # GERAR MAPA
 # =============================
@@ -60,21 +58,28 @@ def gerar_mapa():
 
     grid = [[0 for _ in range(COLUNAS)] for _ in range(LINHAS)]
 
-    # região retangular
+    # área retangular
     for i in range(10):
         for j in range(12):
+
             grid[i][j] = 2
 
-    # região circular
-    cx, cy = 22, 22
-    r = 6
+            if random.random() < 0.20:
+                grid[i][j] = 1
+
+    # área circular
+    cx, cy = 5, 18
+    r = 5
 
     for i in range(LINHAS):
         for j in range(COLUNAS):
+
             if (i - cx) ** 2 + (j - cy) ** 2 <= r**2:
+
                 grid[i][j] = 3
 
-    # garantir start e goal livres
+                if random.random() < 0.20:
+                    grid[i][j] = 1
     grid[start[0]][start[1]] = 0
     grid[goal[0]][goal[1]] = 0
 
@@ -82,6 +87,7 @@ def gerar_mapa():
 
 
 grid = gerar_mapa()
+
 
 # =============================
 # HEURÍSTICA
@@ -109,6 +115,7 @@ def neighbors(n):
 
         if 0 <= nx < LINHAS and 0 <= ny < COLUNAS:
 
+            # evita obstáculos
             if grid[nx][ny] != 1:
                 result.append((nx, ny))
 
@@ -118,6 +125,8 @@ def neighbors(n):
 # =============================
 # CUSTO
 # =============================
+
+
 def custo(x, y):
 
     if grid[x][y] == 2:
@@ -141,16 +150,9 @@ def astar(start, goal):
     came = {}
     g = {start: 0}
 
-    closed = set()
-
     while open_list:
 
         _, current = heapq.heappop(open_list)
-
-        if current in closed:
-            continue
-
-        closed.add(current)
 
         if current == goal:
 
@@ -169,7 +171,7 @@ def astar(start, goal):
 
             tentative = g[current] + custo(n[0], n[1])
 
-            if tentative > bateria:
+            if tentative > E_MAX:
                 continue
 
             if n not in g or tentative < g[n]:
@@ -197,9 +199,6 @@ def ida_star(start, goal):
 
         node = path[-1]
 
-        if g > E_MAX:
-            return float("inf")
-
         f = g + heuristic(node, goal)
 
         if f > bound:
@@ -215,9 +214,11 @@ def ida_star(start, goal):
             if n in path:
                 continue
 
+            cost = custo(n[0], n[1])
+
             path.append(n)
 
-            t = search(path, g + 1, bound)
+            t = search(path, g + cost, bound)
 
             if isinstance(t, list):
                 return t
@@ -264,10 +265,9 @@ def rbfs(node, goal, g, bound, path):
         if n in path:
             continue
 
-        if g + 1 > E_MAX:
-            continue
+        cost = custo(n[0], n[1])
 
-        successors.append((n, g + 1 + heuristic(n, goal)))
+        successors.append((n, g + cost + heuristic(n, goal), cost))
 
     if not successors:
         return None, float("inf")
@@ -276,16 +276,16 @@ def rbfs(node, goal, g, bound, path):
 
         successors.sort(key=lambda x: x[1])
 
-        best, best_f = successors[0]
+        best, best_f, best_cost = successors[0]
 
         if best_f > bound:
             return None, best_f
 
         alt = successors[1][1] if len(successors) > 1 else float("inf")
 
-        result, new_f = rbfs(best, goal, g + 1, min(bound, alt), path + [best])
+        result, new_f = rbfs(best, goal, g + best_cost, min(bound, alt), path + [best])
 
-        successors[0] = (best, new_f)
+        successors[0] = (best, new_f, best_cost)
 
         if result:
             return result, new_f
@@ -298,45 +298,55 @@ def run_rbfs(start, goal):
 
 
 # =============================
-# VARREDURA DE REGIÕES
+# VARREDURA INTELIGENTE
 # =============================
 
 
-def pegar_regiao(grid, valor):
-    celulas = []
+def cobrir_regiao(start_pos, area, algoritmo):
 
-    for i in range(len(grid)):
-        for j in range(len(grid[0])):
-            if grid[i][j] == valor:
-                celulas.append((i, j))
+    caminho_total = []
+    atual = start_pos
 
-    return celulas
+    area_restante = set(area)
+
+    while area_restante:
+
+        # escolher ponto mais próximo
+        alvo = min(area_restante, key=lambda c: heuristic(atual, c))
+
+        caminho = algoritmo(atual, alvo)
+
+        if not caminho:
+            # se não encontrar caminho remove o ponto
+            area_restante.remove(alvo)
+            continue
+
+        caminho_total += caminho[1:]
+
+        atual = alvo
+
+        area_restante.remove(alvo)
+
+    return caminho_total
 
 
-def varrer_area(celulas):
-    path = []
+def pegar_regiao(tipo):
 
-    linhas = {}
+    regiao = []
 
-    for x, y in celulas:
-        if x not in linhas:
-            linhas[x] = []
-        linhas[x].append((x, y))
+    for i in range(LINHAS):
+        for j in range(COLUNAS):
 
-    for i, linha in enumerate(sorted(linhas.keys())):
-        pontos = sorted(linhas[linha], key=lambda p: p[1])
+            if grid[i][j] == tipo:
+                regiao.append((i, j))
 
-        if i % 2 == 0:
-            path.extend(pontos)
-        else:
-            path.extend(pontos[::-1])
-
-    return path
+    return regiao
 
 
 # =============================
 # PERFORMANCE
 # =============================
+
 
 performance = []
 
@@ -344,130 +354,103 @@ performance = []
 def executar_algoritmo(nome, func):
 
     tracemalloc.start()
-
     t0 = time.perf_counter()
 
-    # pegar regiões
-    area_azul = pegar_regiao(grid, 2)
-    area_amarela = pegar_regiao(grid, 3)
+    area_ret = pegar_regiao(2)
+    area_circ = pegar_regiao(3)
 
-    # gerar varredura
-    varredura_azul = varrer_area(area_azul)
-    varredura_amarela = varrer_area(area_amarela)
+    # ir até a primeira área
+    entrada = min(area_ret, key=lambda c: heuristic(start, c))
+    path1 = func(start, entrada)
 
-    # caminho até área azul
-    path1 = func(start, varredura_azul[0])
+    # cobrir área retangular
+    path2 = cobrir_regiao(entrada, area_ret, func)
 
-    # varrer área azul
-    path2 = varredura_azul
+    ultimo = path2[-1] if path2 else entrada
 
-    # caminho até área amarela
-    path3 = func(varredura_azul[-1], varredura_amarela[0])
+    # ir para área circular
+    entrada2 = min(area_circ, key=lambda c: heuristic(ultimo, c))
+    path3 = func(ultimo, entrada2)
 
-    # varrer área amarela
-    path4 = varredura_amarela
+    # cobrir área circular
+    path4 = cobrir_regiao(entrada2, area_circ, func)
 
-    # caminho total
     path = path1 + path2 + path3 + path4
-    # verificar se as áreas existem
-    if not varredura_azul or not varredura_amarela:
-        return None, 0, 0
+    tempo = time.perf_counter() - t0
 
-    t1 = time.perf_counter()
-
-    mem = tracemalloc.get_traced_memory()[1] / 1024
+    current, peak = tracemalloc.get_traced_memory()
+    mem = peak / 1024
     tracemalloc.stop()
 
-    tempo = t1 - t0
-    energia = sum(custo(x, y) for x, y in path) if path else 0
+    energia = sum(custo(x, y) for x, y in path)
 
     performance.append(
         {"algoritmo": nome, "tempo": tempo, "memoria": mem, "energia": energia}
     )
 
-    return path, tempo, mem
+    return path
 
 
 # =============================
-# SCORE
+# COMPARAR ALGORITMOS
 # =============================
 
 
-def calcular_score(alpha=0.6, beta=0.4):
+def comparar_algoritmos():
 
-    tempos = [r["tempo"] for r in performance]
-    mems = [r["memoria"] for r in performance]
+    global performance
 
-    max_t = max(tempos) or 1
-    max_m = max(mems) or 1
+    performance.clear()
 
-    for r in performance:
+    algoritmos = [("A*", astar), ("IDA*", ida_star), ("RBFS", run_rbfs)]
 
-        tempo_norm = 1 - (r["tempo"] / max_t)
-        mem_norm = 1 - (r["memoria"] / max_m)
+    for nome, func in algoritmos:
 
-        score = alpha * tempo_norm + beta * mem_norm
+        print("Executando:", nome)
 
-        r["score"] = score
+        path = executar_algoritmo(nome, func)
+
+        if path:
+            animar(path)
+        else:
+            print("Nenhum caminho encontrado para", nome)
+
+    mostrar_graficos()
 
 
 # =============================
-# TABELA
+# GRÁFICOS
 # =============================
 
 
-def mostrar_tabela():
+def mostrar_graficos():
 
     if not performance:
         return
 
-    calcular_score()
+    nomes = [r["algoritmo"] for r in performance]
+    tempos = [r["tempo"] for r in performance]
+    mems = [r["memoria"] for r in performance]
+    energia = [r["energia"] for r in performance]
 
-    dados = []
+    plt.figure(figsize=(10, 5))
 
-    for r in performance:
+    plt.subplot(131)
+    plt.bar(nomes, tempos)
+    plt.title("Tempo")
 
-        dados.append(
-            [
-                r["algoritmo"],
-                "Retangular",
-                "Circular",
-                round(r["tempo"], 5),
-                round(r["memoria"], 2),
-                r["energia"],
-                round(r["score"], 3),
-            ]
-        )
+    plt.subplot(132)
+    plt.bar(nomes, mems)
+    plt.title("Memória KB")
 
-    colunas = [
-        "Algoritmo",
-        "Geom Inicial",
-        "Geom Final",
-        "Tempo",
-        "Memoria KB",
-        "Energia",
-        "Score",
-    ]
-
-    fig, ax = plt.subplots()
-
-    ax.axis("off")
-
-    tabela = ax.table(cellText=dados, colLabels=colunas, loc="center")
-
-    tabela.scale(1.2, 1.5)
-
-    plt.title("Matriz de Performance")
+    plt.subplot(133)
+    plt.bar(nomes, energia)
+    plt.title("Energia")
 
     plt.show()
 
 
-# =============================
-# DESENHO
-# =============================
-
-
-def desenhar(path=None, drone=None):
+def desenhar(grid, drone=None):
 
     tela.fill(BRANCO)
 
@@ -487,7 +470,7 @@ def desenhar(path=None, drone=None):
 
             pygame.draw.rect(tela, CINZA, rect, 1)
 
-    # start
+    # START
     pygame.draw.circle(
         tela,
         (0, 255, 0),
@@ -495,7 +478,7 @@ def desenhar(path=None, drone=None):
         TAMANHO // 3,
     )
 
-    # goal
+    # GOAL
     pygame.draw.circle(
         tela,
         (255, 0, 0),
@@ -503,7 +486,8 @@ def desenhar(path=None, drone=None):
         TAMANHO // 3,
     )
 
-    if drone:
+    # DRONE
+    if drone is not None:
 
         x, y = drone
 
@@ -515,49 +499,109 @@ def desenhar(path=None, drone=None):
         )
 
 
-# =============================
-# UI
-# =============================
+def desenhar_bateria(x, y):
 
-path = None
+    global bateria
+
+    largura = 70
+    altura = 28
+
+    porcentagem = bateria / E_MAX
+
+    # cor da bateria
+    if porcentagem > 0.6:
+        cor = (0, 200, 0)
+    elif porcentagem > 0.3:
+        cor = (255, 200, 0)
+    else:
+        cor = (200, 0, 0)
+
+    # corpo da bateria
+    pygame.draw.rect(tela, PRETO, (x, y, largura, altura), 2)
+
+    # nível da bateria
+    nivel = int((largura - 4) * porcentagem)
+
+    pygame.draw.rect(tela, cor, (x + 2, y + 2, nivel, altura - 4))
+
+    # terminal da bateria
+    pygame.draw.rect(tela, PRETO, (x + largura, y + altura // 3, 6, altura // 3))
 
 
 def desenhar_ui():
 
-    global path, bateria, largura_barra
+    global status_mensagem
 
     x_offset = COLUNAS * TAMANHO + 20
-
-    energia_restante = bateria
+    y = 20
 
     textos = [
         "CONTROLES",
-        "1 - A*",
-        "2 - IDA*",
-        "3 - RBFS",
+        "",
+        "1 - Executar A*",
+        "2 - Executar IDA*",
+        "3 - Executar RBFS",
+        "",
         "R - Novo mapa",
-        "T - Mostrar tabela",
+        "G - Mostrar graficos",
+        "",
+        "ESC - Sair",
     ]
-
-    y = 20
 
     for t in textos:
 
         img = fonte.render(t, True, PRETO)
         tela.blit(img, (x_offset, y))
+
         y += 25
+
+    # -------------------------
+    # STATUS
+    # -------------------------
 
     y += 20
 
-    bateria_texto = f"Bateria restante: {energia_restante}"
-    img = fonte.render(bateria_texto, True, PRETO)
+    titulo = fonte.render("STATUS:", True, PRETO)
+    tela.blit(titulo, (x_offset, y))
+
+    y += 25
+
+    # cor dinâmica do status
+    if "acabou" in status_mensagem or "Nenhum" in status_mensagem:
+        cor = (200, 0, 0)
+    elif "Executando" in status_mensagem:
+        cor = (0, 0, 200)
+    else:
+        cor = (0, 120, 0)
+
+    img = fonte.render(status_mensagem, True, cor)
     tela.blit(img, (x_offset, y))
 
-    # DESENHO BARRA DE ENERGIA
+    # -------------------------
+    # BATERIA VISUAL
+    # -------------------------
 
-    pygame.draw.rect(tela, PRETO, (x_offset, y + 30, largura_barra, 20), 2)
-    energia_visual = int((bateria / E_MAX) * largura_barra)
-    pygame.draw.rect(tela, VERDE, (x_offset, y + 30, energia_visual, 20))
+    y += 40
+
+    img = fonte.render("BATERIA", True, PRETO)
+    tela.blit(img, (x_offset, y))
+
+    y += 30
+
+    desenhar_bateria(x_offset, y)
+
+    y += 40
+
+    texto = f"{int(bateria)} / {E_MAX}"
+    img = fonte.render(texto, True, PRETO)
+    tela.blit(img, (x_offset, y))
+
+    y += 25
+
+    # energia consumida
+    texto_uso = f"Energia usada: {int(energia_consumida)}"
+    img = fonte.render(texto_uso, True, PRETO)
+    tela.blit(img, (x_offset, y))
 
 
 # =============================
@@ -567,28 +611,37 @@ def desenhar_ui():
 
 def animar(path):
 
-    global bateria
+    global bateria, energia_consumida, status_mensagem, grid
 
     if not path:
-        print("Nenhum caminho encontrado")
+        status_mensagem = "Nenhum caminho encontrado"
         return
+
+    bateria = E_MAX
+    energia_consumida = 0
+    status_mensagem = "Drone executando..."
 
     for p in path:
 
         x, y = p
         gasto = custo(x, y)
 
+        # verificar bateria
         if bateria - gasto < 0:
-            print("Bateria insuficiente para continuar!")
+            status_mensagem = "Bateria acabou!"
             break
 
         bateria -= gasto
+        energia_consumida += gasto
 
-        desenhar(path, p)
+        desenhar(grid, p)
         desenhar_ui()
 
         pygame.display.update()
-        pygame.time.delay(70)
+        pygame.time.delay(60)
+
+    if bateria > 0:
+        status_mensagem = "Missao concluida"
 
 
 # =============================
@@ -609,37 +662,36 @@ while running:
         if event.type == pygame.KEYDOWN:
 
             if event.key == pygame.K_r:
-
                 grid = gerar_mapa()
-                path = None
+
+                status_mensagem = "Novo mapa gerado"
 
             if event.key == pygame.K_1:
-
-                bateria = E_MAX
-                path, tempo, mem = executar_algoritmo("A*", astar)
+                status_mensagem = "Executando A*"
+                path = executar_algoritmo("A*", astar)
                 animar(path)
 
             if event.key == pygame.K_2:
-
-                bateria = E_MAX
-                path, tempo, mem = executar_algoritmo("IDA*", ida_star)
+                status_mensagem = "Executando IDA*"
+                path = executar_algoritmo("IDA*", ida_star)
                 animar(path)
 
             if event.key == pygame.K_3:
-
-                bateria = E_MAX
-                path, tempo, mem = executar_algoritmo("RBFS", run_rbfs)
+                status_mensagem = "Executando RBFS"
+                path = executar_algoritmo("RBFS", run_rbfs)
                 animar(path)
 
-            if event.key == pygame.K_t:
+            if event.key == pygame.K_g:
+                status_mensagem = "Mostrando gráficos"
+                mostrar_graficos()
 
-                mostrar_tabela()
             if event.key == pygame.K_ESCAPE:
                 running = False
                 pygame.quit()
                 exit()
 
-    desenhar(path, start)
+    # desenhar tela
+    desenhar(grid)
     desenhar_ui()
 
     pygame.display.update()
