@@ -15,16 +15,9 @@ COLUNAS = 30
 LARGURA = COLUNAS * TAMANHO + 300
 ALTURA = LINHAS * TAMANHO
 
-tela = pygame.display.set_mode((LARGURA, ALTURA))
-pygame.display.set_caption("Planejamento de Rotas - Drone Agrícola")
-
-clock = pygame.time.Clock()
-fonte = pygame.font.SysFont("Arial", 16)
-
 E_MAX = 100  # energia máxima do drone
-CUSTO_MOVIMENTO = 1  # custo de energia para cada movimento
-bateria = E_MAX
-largura_barra = 120
+CUSTO_MOVIMENTO = 0.3  # custo de energia para cada movimento
+
 
 
 DIRECOES = [(1, 0), (-1, 0), (0, 1), (0, -1)]
