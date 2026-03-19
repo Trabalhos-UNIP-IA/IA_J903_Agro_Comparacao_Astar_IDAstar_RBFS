@@ -116,3 +116,22 @@ def mostrar_tabela():
     plt.title("Matriz de Performance")
 
     plt.show()
+# COMPARAR ALGORITMOS
+def comparar_algoritmos(performance):
+
+    performance.clear()
+
+    algoritmos = [("A*", astar), ("IDA*", ida_star), ("RBFS", run_rbfs)]
+
+    for nome, func in algoritmos:
+
+        print("Executando:", nome)
+
+        path ,performance= executar_algoritmo(nome, func,gridori)
+
+        if path:
+            animar(path,gridori)
+        else:
+            print("Nenhum caminho encontrado para", nome)
+
+    mostrar_graficos(performance)
