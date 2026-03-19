@@ -16,7 +16,7 @@ LARGURA = COLUNAS * TAMANHO + 300
 ALTURA = LINHAS * TAMANHO
 
 E_MAX = 100  # energia máxima do drone
-CUSTO_MOVIMENTO = 0.3  # custo de energia para cada movimento
+CUSTO_MOVIMENTO = 0.8  # custo de energia para cada movimento
 
 
 

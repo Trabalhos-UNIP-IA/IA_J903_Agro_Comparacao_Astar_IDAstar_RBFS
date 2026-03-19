@@ -442,7 +442,7 @@ def desenhar_ui():
     tela.blit(img, (x_offset, y))
 
 # ANIMAÇÃO
-def animar(path,grid):
+def animar(path,grid,func=None):
 
     global bateria, energia_consumida, status_mensagem
 
@@ -469,22 +469,42 @@ def animar(path,grid):
         gasto = custo(x, y)
 
         # verificar bateria
-        if bateria - gasto < 0:
-            status_mensagem = "Bateria acabou!"
-            break
+        if bateria - gasto < 5:
+            path2 = func(start, p)  
+            status_mensagem = "Bateria acabou!\r O Drone esta fazendo um pouso forçado \r chamando o drone de emergencia para resgate"
+            desenhar_ui()
+            time.sleep(2)
+            for p2 in path2:
+                status_mensagem = "O drone de emergencia esta indo busca o drone sem bateria "
+                desenhar(tela, grid,start, goal,p, p2)
+                desenhar_ui()
+                pygame.display.update()
+                pygame.time.delay(20)
+            path3 = func(p, goal)
+            status_mensagem = "O drone de emergencia encontrou o drone sem bateria "
+            desenhar_ui()
+            time.sleep(2)
+            for p2 in path3:
+                status_mensagem = "O drone de emergencia esta levando o drone sem bateria para a base "
+                desenhar_ui()
+                desenhar(tela, grid,start, goal,p2, p2)
+                pygame.display.update()
+                pygame.time.delay(20)
+            status_mensagem = "O drone principal esta na base recarregando e sofrendo atualizações"
+        
+            desenhar_ui()
+            return grid
+        else:
+            bateria -= gasto
+            energia_consumida += gasto
 
-        bateria -= gasto
-        energia_consumida += gasto
+            desenhar(tela, grid,start, goal, p)
+            desenhar_ui()
 
-        desenhar(tela, grid,start, goal, p)
-        desenhar_ui()
-
-        pygame.display.update()
-        pygame.time.delay(60)
-        u = p
-        if bateria <= 0:
-            status_mensagem = "Bateria acabou!"
-            break
+            pygame.display.update()
+            pygame.time.delay(60)
+            u = p
+            
     if bateria > 0:
         status_mensagem = "Missao concluida"
         return grid
@@ -495,7 +515,7 @@ def escolher(mensagem,algo,func,gridori):
     grid = deepcopy(gridori)
     status_mensagem = mensagem
     path = executar_algoritmo(algo, func,grid=grid)
-    grid = animar(path,grid)
+    grid = animar(path,grid,func)
 
     return grid
 
