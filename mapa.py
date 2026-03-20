@@ -1,5 +1,5 @@
 import random
-from Drone import Drone
+
 import pygame
 from config import LINHAS, COLUNAS, TAMANHO, BRANCO, PRETO, AZUL, AMARELO, VERDE, VERMELHO, CINZA
 
@@ -50,7 +50,7 @@ def gerar_mapa(start:list , goal:list):
     return grid
 
 
-def desenhar(tela,grid,start:list , goal:list, cdrone=None,cdrone2=None,drone=Drone,drone2=Drone):
+def desenhar(tela,grid,start:list , goal:list, drone=None,drone2=None):
 
     tela.fill(BRANCO)
 
@@ -95,11 +95,100 @@ def desenhar(tela,grid,start:list , goal:list, cdrone=None,cdrone2=None,drone=Dr
         TAMANHO // 3,
     )
 
-    if cdrone:
-        drone.desenhar_drone(cdrone,tela,TAMANHO)
-    if cdrone2:
-        drone2.desenhar_drone(cdrone2,tela,TAMANHO)
+    if drone:
 
+        x, y = drone
+        # pygame.draw.rect(
+        #     tela,
+        #     CINZA,
+        #     ( y * TAMANHO  , x * TAMANHO 
+        #      , TAMANHO*.7, TAMANHO*.5),
+        #     )
+                # Definindo o retângulo do corpo (centralizado no drone)
+        largura_corpo = TAMANHO // 2
+        altura_corpo = TAMANHO // 3
+
+        # Desenha o retângulo preenchido (width=0) e com cantos levemente arredondados
+        # 1. Definimos o centro da célula (onde o drone está)
+        centro_x = y * TAMANHO + TAMANHO // 2
+        centro_y = x * TAMANHO + TAMANHO // 2
+
+        pygame.draw.rect(
+            tela, 
+            CINZA, 
+            (centro_x - largura_corpo // 2, centro_y - altura_corpo // 2, largura_corpo, altura_corpo),
+            width=0,
+            border_radius=5
+        )
+        pygame.draw.rect(
+            tela, 
+            [255,255,0], 
+            (centro_x - largura_corpo // 2, centro_y - altura_corpo // 2, largura_corpo*.7, altura_corpo*.7),
+            width=2,
+            border_radius=5
+        )
+        # 2. Definimos a distância do centro até as hélices (ajuste o 4 conforme desejar)
+        deslocamento = TAMANHO // 4 
+
+        # 3. Lista de direções: (horizontal, vertical)
+        # (-1, -1) = Superior Esquerdo | (1, -1) = Superior Direito
+        # (-1, 1)  = Inferior Esquerdo | (1, 1)  = Inferior Direito
+        
+        posicoes = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
+
+        for dx, dy in posicoes:
+            # Calcula a posição de cada hélice
+            pos_helice = (centro_x + dx * deslocamento, centro_y + dy * deslocamento)
+            
+            # Desenha o círculo Amarelo (Externo)
+            pygame.draw.circle(tela, CINZA, pos_helice, TAMANHO // 6,width=3)
+            
+            # Desenha o círculo Preto (Interno)
+            pygame.draw.circle(tela, PRETO, pos_helice, TAMANHO // 8 ,width=2)
+    if drone2:
+        tamanho = TAMANHO
+        desenhar_drone(drone2,tela,tamanho,[0,0,255],[255,0,0])
+        # x, y = drone2
+        # largura_corpo = TAMANHO // 2
+        # altura_corpo = TAMANHO // 3
+
+        # # Desenha o retângulo preenchido (width=0) e com cantos levemente arredondados
+        # # 1. Definimos o centro da célula (onde o drone está)
+        # centro_x = y * TAMANHO + TAMANHO // 2
+        # centro_y = x * TAMANHO + TAMANHO // 2
+
+        # pygame.draw.rect(
+        #     tela, 
+        #     [0,0,255], 
+        #     (centro_x - largura_corpo // 2, centro_y - altura_corpo // 2, largura_corpo, altura_corpo),
+        #     width=0,
+        #     border_radius=5
+        # )
+        # pygame.draw.rect(
+        #     tela, 
+        #     [255,0,0], 
+        #     (centro_x - largura_corpo // 2, centro_y - altura_corpo // 2, largura_corpo*.7, altura_corpo*.7),
+        #     width=2,
+        #     border_radius=5
+        # )
+        # # 2. Definimos a distância do centro até as hélices (ajuste o 4 conforme desejar)
+        # deslocamento = TAMANHO // 4 
+
+        # # 3. Lista de direções: (horizontal, vertical)
+        # # (-1, -1) = Superior Esquerdo | (1, -1) = Superior Direito
+        # # (-1, 1)  = Inferior Esquerdo | (1, 1)  = Inferior Direito
+        
+        # posicoes = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
+
+        # for dx, dy in posicoes:
+        #     # Calcula a posição de cada hélice
+        #     pos_helice = (centro_x + dx * deslocamento, centro_y + dy * deslocamento)
+            
+        #     # Desenha o círculo Amarelo (Externo)
+        #     pygame.draw.circle(tela, [0,0,255], pos_helice, TAMANHO // 6,width=3)
+            
+        #     # Desenha o círculo Preto (Interno)
+        #     pygame.draw.circle(tela, [255,0,0], pos_helice, TAMANHO // 8 ,width=2)
 
 def desenhar_drone(cortendas:list,tela, tamanho,cor_primaria:list,cor_secundaria:list):
         x, y = cortendas
@@ -127,6 +216,10 @@ def desenhar_drone(cortendas:list,tela, tamanho,cor_primaria:list,cor_secundaria
         )
         # 2. Definimos a distância do centro até as hélices (ajuste o 4 conforme desejar)
         deslocamento = tamanho // 4 
+
+        # 3. Lista de direções: (horizontal, vertical)
+        # (-1, -1) = Superior Esquerdo | (1, -1) = Superior Direito
+        # (-1, 1)  = Inferior Esquerdo | (1, 1)  = Inferior Direito
         
         posicoes = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
 
