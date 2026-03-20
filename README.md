@@ -36,7 +36,13 @@ A fazenda possui duas regiões distintas:
 
 Cada região pode conter obstáculos e diferentes custos de movimentação.
 
-O drone possui energia limitada (**E_max**) e cada movimento consome energia. Caminhos que excedem esse limite são descartados.
+O drone possui energia limitada (**E_max**) e cada movimento consome energia.
+
+⚠️ **Restrição adicional importante:**  
+O drone não pode esgotar totalmente a bateria. Ao atingir **5% de energia restante**, ele deve realizar um **pouso de emergência** e aguardar resgate.  
+Portanto, qualquer rota planejada deve garantir que o consumo de energia não ultrapasse esse limite seguro.
+
+Caminhos que excedem esse limite são descartados.
 
 ---
 
