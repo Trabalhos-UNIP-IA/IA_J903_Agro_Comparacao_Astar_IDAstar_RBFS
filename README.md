@@ -108,33 +108,11 @@ Onde:
 
 ```
 📦 projeto
- ┣ 📂 algorithms
- ┃ ┣ astar.py
- ┃ ┣ idastar.py
- ┃ ┗ rbfs.py
- ┣ 📂 utils
- ┃ ┗ grid.py
- ┣ main.py
- ┗ README.md
-```
-
----
-
-## ▶️ Como Executar
-
-1. Clone o repositório:
-```bash
-git clone https://github.com/Trabalhos-UNIP-IA/IA_J903_Agro_Comparacao_Astar_IDAstar_RBFS.git
-```
-
-2. Acesse a pasta:
-```bash
-cd IA_J903_Agro_Comparacao_Astar_IDAstar_RBFS
-```
-
-3. Execute o projeto:
-```bash
-python main.py
+ ┣ 📜 pygame_vizual.py   # Visualização do ambiente e execução com interface gráfica
+ ┣ 📜 mapa.py            # Definição do grid, regiões e obstáculos
+ ┣ 📜 config.py          # Configurações do ambiente (energia, dimensões, etc)
+ ┣ 📜 requirements.txt   # Dependências do projeto
+ ┗ 📜 README.md
 ```
 
 ---
@@ -181,8 +159,3 @@ O RBFS busca equilibrar memória e desempenho, mantendo apenas o caminho atual e
 - Para equilíbrio entre memória e desempenho → **RBFS**  
 
 ---
-
-## 📚 Referências
-
-- Russell, S.; Norvig, P. *Artificial Intelligence: A Modern Approach*  
-- Documentação oficial dos algoritmos de busca heurística  
